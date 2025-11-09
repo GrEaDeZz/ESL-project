@@ -1,48 +1,94 @@
 #include <stdbool.h>
-#include <stdint.h>
 #include "nrf_delay.h"
-#include "boards.h"
+#include "nrf_gpio.h"
 
-// Настройки мигания
-#define BLINK_ON_MS       250  // Как долго светодиод горит
-#define BLINK_OFF_MS      250  // Пауза между миганиями
-#define PAUSE_DIGIT_MS    500  // Пауза после завершения мигания одного светодиода
-#define PAUSE_LOOP_MS     1500 // Пауза в конце всего цикла
+#define LED_1_Y_PIN     6
+#define LED_2_R_PIN     8
+#define LED_2_G_PIN     41
+#define LED_2_B_PIN     12
+#define BUTTON_1_PIN    38
 
-// ID платы: 6606
-static const int id_digits[LEDS_NUMBER] = {6, 6, 0, 6};
+#define BLINK_ON_MS     250
+#define BLINK_OFF_MS    250
 
+static const int id_digits[4] = { 6, 6, 0, 6 };
 
-void blink_led(uint8_t led_index, int blink_count)
+static const uint32_t led_pins[4] = {
+    LED_1_Y_PIN,
+    LED_2_R_PIN,
+    LED_2_G_PIN,
+    LED_2_B_PIN
+};
+
+static int current_index = 0;   // индекс активного светодиода
+static int current_blink = 0;   // количество завершённых миганий текущего светодиода
+
+void leds_init(void)
 {
+    nrf_gpio_cfg_output(LED_1_Y_PIN);
+    nrf_gpio_cfg_output(LED_2_R_PIN);
+    nrf_gpio_cfg_output(LED_2_G_PIN);
+    nrf_gpio_cfg_output(LED_2_B_PIN);
 
-    for (int i = 0; i < blink_count; i++)
-    {
-        bsp_board_led_on(led_index);
-        nrf_delay_ms(BLINK_ON_MS);
-        
-        bsp_board_led_off(led_index);
-        nrf_delay_ms(BLINK_OFF_MS);
-    }
+    nrf_gpio_pin_set(LED_1_Y_PIN);
+    nrf_gpio_pin_set(LED_2_R_PIN);
+    nrf_gpio_pin_set(LED_2_G_PIN);
+    nrf_gpio_pin_set(LED_2_B_PIN);
+}
+
+void button_init(void)
+{
+    nrf_gpio_cfg_input(BUTTON_1_PIN, NRF_GPIO_PIN_PULLUP);
+}
+
+void led_on(uint32_t pin)
+{
+    nrf_gpio_pin_clear(pin);
+}
+
+void led_off(uint32_t pin)
+{
+    nrf_gpio_pin_set(pin);
 }
 
 int main(void)
 {
-
-    bsp_board_init(BSP_INIT_LEDS);
-
-    bsp_board_leds_off();
+    leds_init();
+    button_init();
 
     while (true)
     {
-        for (int i = 0; i < LEDS_NUMBER; i++)
+        if (nrf_gpio_pin_read(BUTTON_1_PIN) == 0)
         {
-            int num_blinks  = id_digits[i];
+            uint32_t pin = led_pins[current_index];
+            int total_blinks = id_digits[current_index];
 
-            blink_led(i, num_blinks);
+            while (current_blink < total_blinks)
+            {
+                if (nrf_gpio_pin_read(BUTTON_1_PIN) != 0)
+                    break;
 
-            nrf_delay_ms(PAUSE_DIGIT_MS);
+                led_on(pin);
+                nrf_delay_ms(BLINK_ON_MS);
+
+                if (nrf_gpio_pin_read(BUTTON_1_PIN) != 0)
+                    break;
+
+                led_off(pin);
+                nrf_delay_ms(BLINK_OFF_MS);
+
+                current_blink++;
+            }
+
+            if (current_blink >= total_blinks)
+            {
+                current_blink = 0;
+                current_index = (current_index + 1) % 4;
+            }
         }
-        nrf_delay_ms(PAUSE_LOOP_MS);
+        else
+        {
+            // Кнопка не нажата — делаем другую работу
+        }
     }
 }

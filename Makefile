@@ -9,7 +9,7 @@ SDK_ROOT ?= ../esl-nsdk
 PROJ_DIR := .
 
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
-  LINKER_SCRIPT  := blinky_gcc_nrf52.ld
+  LINKER_SCRIPT  := ${PROJ_DIR}/_build_config/blinky_gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
@@ -61,11 +61,6 @@ INC_FOLDERS += \
 
 # Libraries common to all targets
 LIB_FILES += \
-
-# Optimization flags
-OPT = -O3 -g3
-# Uncomment the line below to enable link time optimization
-#OPT += -flto
 
 # C flags common to all targets
 CFLAGS += $(OPT)
@@ -126,7 +121,7 @@ default: nrf52840_xxaa
 help:
 	@echo following targets are available:
 	@echo		nrf52840_xxaa
-	@echo		flash      - flashing binary
+	@echo		dfu          - flashing binary
 
 TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
 
