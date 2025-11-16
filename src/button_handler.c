@@ -3,6 +3,10 @@
 #include "app_timer.h"
 #include "nrf_gpio.h"
 #include "pwm_handler.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+#include "nrf_log_backend_usb.h"
 
 #define DEBOUNCE_MS         200
 #define DOUBLE_CLICK_MS     600
@@ -37,11 +41,13 @@ static void button_gpiote_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t a
     // Логика двойного клика
     if (!m_first_click_detected)
     {
+        NRF_LOG_INFO("Обнаружено одно нажатие.");
         m_first_click_detected = true;
         app_timer_start(double_click_timer, APP_TIMER_TICKS(DOUBLE_CLICK_MS), NULL);
     }
     else
     {
+        NRF_LOG_INFO("Обнаружено двойное нажатие.");
         m_first_click_detected = false;
         app_timer_stop(double_click_timer);
         pwm_handler_toggle_playback();
