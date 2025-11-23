@@ -8,6 +8,7 @@
 
 #include "button_handler.h"
 #include "pwm_handler.h"
+#include "app_logic.h"
 
 #define LED_1_Y_PIN     6
 #define LED_2_R_PIN     8
@@ -28,7 +29,6 @@ static void log_init(void)
 {
     ret_code_t err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
-
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
@@ -38,18 +38,21 @@ int main(void)
 
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
-    
     nrf_drv_clock_lfclk_request(NULL);
-
     while (!nrf_drv_clock_lfclk_is_running());
 
     err_code = nrf_drv_power_init(NULL);
     APP_ERROR_CHECK(err_code);
 
     log_init();
+    
     app_timer_init();
+
+    pwm_handler_init(led_pins);
+
     button_handler_init(BUTTON_1_PIN);
-    pwm_handler_init(led_pins, id_digits);
+
+    app_logic_init(id_digits);
 
     while (1)
     {
