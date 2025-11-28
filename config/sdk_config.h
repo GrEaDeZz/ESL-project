@@ -11767,6 +11767,12 @@
 #define POWER_CONFIG_SOC_OBSERVER_PRIO 0
 #endif
 
+// <e> NRFX_NVMC_ENABLED - nrfx_nvmc - NVMC peripheral driver
+//==========================================================
+#ifndef NRFX_NVMC_ENABLED
+#define NRFX_NVMC_ENABLED 1
+#endif
+
 
 //     APP_TIMER Configuration
 #ifndef APP_TIMER_V2
