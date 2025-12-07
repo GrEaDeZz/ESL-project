@@ -4,11 +4,11 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
-#include "nrf_log_backend_usb.h"
 
 #include "button_handler.h"
 #include "pwm_handler.h"
 #include "app_logic.h"
+#include "usb_cli.h"
 
 #define LED_1_Y_PIN     6
 #define LED_2_R_PIN     8
@@ -54,9 +54,11 @@ int main(void)
 
     app_logic_init(id_digits);
 
+    usb_cli_init(); 
+
     while (1)
     {
-        LOG_BACKEND_USB_PROCESS();
+        usb_cli_process();
 
         if (NRF_LOG_PROCESS() == false)
         {

@@ -11,12 +11,15 @@ PROJ_DIR := .
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
   LINKER_SCRIPT  := ${PROJ_DIR}/config/blinky_gcc_nrf52.ld
 
+ESTC_USB_CLI_ENABLED ?= 1
+
 # Source files common to all targets
 SRC_FILES += \
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/src/button_handler.c \
   $(PROJ_DIR)/src/pwm_handler.c \
   $(PROJ_DIR)/src/app_logic.c \
+  $(PROJ_DIR)/src/usb_cli.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52840.S \
   $(SDK_ROOT)/modules/nrfx/soc/nrfx_atomic.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52840.c \
@@ -44,7 +47,6 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_frontend.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_str_formatter.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_default_backends.c \
-  $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_usb.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_serial.c \
   $(SDK_ROOT)/components/libraries/usbd/app_usbd.c \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c \
@@ -57,6 +59,17 @@ SRC_FILES += \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
   $(SDK_ROOT)/components/libraries/fifo/app_fifo.c \
+
+ifeq ($(ESTC_USB_CLI_ENABLED), 1)
+CFLAGS += -DESTC_USB_CLI_ENABLED
+SRC_FILES += \
+  $(SDK_ROOT)/components/libraries/cli/nrf_cli.c \
+  $(SDK_ROOT)/components/libraries/cli/cdc_acm/nrf_cli_cdc_acm.c \
+  $(SDK_ROOT)/components/libraries/queue/nrf_queue.c \
+  $(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
+  $(SDK_ROOT)/external/utf_converter/utf.c
+endif
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -100,12 +113,19 @@ INC_FOLDERS += \
   $(SDK_ROOT)/external/utf_converter \
   $(SDK_ROOT)/integration/nrfx/legacy \
 
+ifeq ($(ESTC_USB_CLI_ENABLED), 1)
+INC_FOLDERS += \
+  $(SDK_ROOT)/components/libraries/cli \
+  $(SDK_ROOT)/components/libraries/cli/cdc_acm \
+  $(SDK_ROOT)/components/libraries/queue \
+  $(SDK_ROOT)/components/libraries/mutex
+endif
+
 # Libraries common to all targets
 LIB_FILES += \
 
 # C flags common to all targets
 CFLAGS += $(OPT)
-CFLAGS += -DUSE_APP_CONFIG
 CFLAGS += -DBOARD_PCA10059
 CFLAGS += -DBSP_DEFINES_ONLY
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET

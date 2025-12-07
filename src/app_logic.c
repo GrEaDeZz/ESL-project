@@ -69,8 +69,6 @@ static void save_hsv_to_flash(void)
     if (current_flash_data == data_to_write)
         return;
 
-    NRF_LOG_INFO("Saving to flash: Hue=%d, Sat=%d, Val=%d", m_current_hsv.h, m_current_hsv.s, m_current_hsv.v);
-
     nrfx_nvmc_page_erase(FLASH_SAVE_ADDR);
     
     nrfx_nvmc_word_write(FLASH_SAVE_ADDR, data_to_write);
@@ -94,6 +92,36 @@ static bool load_hsv_from_flash(void)
     if (m_current_hsv.v > 100) m_current_hsv.v = 100;
 
     return true;
+}
+
+// Конвертация RGB -> HSV
+static void rgb_to_hsv(uint16_t r, uint16_t g, uint16_t b, hsv_t *hsv)
+{
+    float R = r / 1000.0f;
+    float G = g / 1000.0f;
+    float B = b / 1000.0f;
+
+    float cmax = MAX(R, MAX(G, B));
+    float cmin = MIN(R, MIN(G, B));
+    float delta = cmax - cmin;
+
+    if (delta == 0) {
+        hsv->h = 0;
+    } else if (cmax == R) {
+        hsv->h = (uint16_t)(60 * fmodf(((G - B) / delta), 6));
+    } else if (cmax == G) {
+        hsv->h = (uint16_t)(60 * (((B - R) / delta) + 2));
+    } else {
+        hsv->h = (uint16_t)(60 * (((R - G) / delta) + 4));
+    }
+
+    if (cmax == 0) {
+        hsv->s = 0;
+    } else {
+        hsv->s = (uint8_t)((delta / cmax) * 100);
+    }
+
+    hsv->v = (uint8_t)(cmax * 100);
 }
 
 // Конвертация HSV -> RGB
@@ -265,4 +293,27 @@ void app_logic_init(const int *id_digits)
 
     set_mode(INPUT_MODE_NONE);
     update_leds();
+}
+
+void app_logic_set_hsv(uint16_t h, uint8_t s, uint8_t v)
+{
+    m_current_hsv.h = (h > 360) ? 360 : h;
+    m_current_hsv.s = (s > 100) ? 100 : s;
+    m_current_hsv.v = (v > 100) ? 100 : v;
+
+    set_mode(INPUT_MODE_NONE);
+    update_leds();
+    save_hsv_to_flash();
+}
+
+void app_logic_set_rgb(uint16_t r, uint16_t g, uint16_t b)
+{
+    if (r > 1000) r = 1000;
+    if (g > 1000) g = 1000;
+    if (b > 1000) b = 1000;
+
+    set_mode(INPUT_MODE_NONE); 
+    rgb_to_hsv(r, g, b, &m_current_hsv);
+    update_leds();
+    save_hsv_to_flash();
 }
