@@ -10,6 +10,7 @@
 #include "app_usbd_core.h"
 #include "app_usbd_serial_num.h"
 #include <stdlib.h>
+#include <string.h>
 
 // Настройки CLI
 NRF_CLI_CDC_ACM_DEF(m_cli_cdc_acm_transport);
@@ -68,18 +69,117 @@ static void cmd_hsv(nrf_cli_t const * p_cli, size_t argc, char ** argv)
     nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Color set to H=%d S=%d V=%d\n", h, s, v);
 }
 
-// Команда help
+static void cmd_add_rgb_color(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    if (argc != 5) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Usage: add_rgb_color <r> <g> <b> <name>\n");
+        return;
+    }
+    
+    uint16_t r = (atoi(argv[1]) * 1000) / 255;
+    uint16_t g = (atoi(argv[2]) * 1000) / 255;
+    uint16_t b = (atoi(argv[3]) * 1000) / 255;
+    
+    if (app_logic_save_color_rgb(r, g, b, argv[4])) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Color '%s' saved.\n", argv[4]);
+    } else {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Error: Storage full (max 10) or color already exist.\n");
+    }
+}
+
+static void cmd_add_hsv_color(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    if (argc != 5) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Usage: add_hsv_color <h> <s> <v> <name>\n");
+        return;
+    }
+    
+    uint16_t h = atoi(argv[1]);
+    uint8_t s = atoi(argv[2]);
+    uint8_t v = atoi(argv[3]);
+    
+    if (app_logic_save_color_hsv(h, s, v, argv[4])) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Color '%s' saved.\n", argv[4]);
+    } else {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Error: Storage full (max 10) or color already exist.\n");
+    }
+}
+
+static void cmd_add_current_color(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    if (argc != 2) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Usage: add_current_color <name>\n");
+        return;
+    }
+    
+    if (app_logic_save_current_color(argv[1])) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Current color saved as '%s'.\n", argv[1]);
+    } else {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Error: Storage full (max 10) or color already exist.\n");
+    }
+}
+
+static void cmd_del_color(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    if (argc != 2) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Usage: del_color <name>\n");
+        return;
+    }
+    if (app_logic_del_color(argv[1])) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Deleted '%s'.\n", argv[1]);
+    } else {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Not found: '%s'.\n", argv[1]);
+    }
+}
+
+static void cmd_apply_color(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    if (argc != 2) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Usage: apply_color <name>\n");
+        return;
+    }
+    if (app_logic_apply_color(argv[1])) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Applied '%s'.\n", argv[1]);
+    } else {
+        nrf_cli_fprintf(p_cli, NRF_CLI_ERROR, "Not found: '%s'.\n", argv[1]);
+    }
+}
+
+static void cmd_list_colors(nrf_cli_t const * p_cli, size_t argc, char ** argv)
+{
+    uint8_t count = 0;
+    const saved_color_entry_t * list = app_logic_get_list(&count);
+    
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Saved colors (%d/10):\n", count);
+    for (int i = 0; i < count; i++) {
+        nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "%d) %s [H:%d S:%d V:%d]\n", 
+                        i+1, list[i].name, list[i].color.h, list[i].color.s, list[i].color.v);
+    }
+}
+
 static void cmd_help(nrf_cli_t const * p_cli, size_t argc, char ** argv)
 {
     nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "Supported commands:\n");
     nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  RGB <r> <g> <b>   - Set color using RGB values (0-255)\n");
     nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  HSV <h> <s> <v>   - Set color using HSV model (H:0-360, S:0-100, V:0-100)\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  add_rgb_color ... - Save RGB color to list\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  add_hsv_color ... - Save HSV color to list\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  add_current_color - Save current color\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  del_color <name>  - Delete color from list\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  apply_color <name>- Apply saved color\n");
+    nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  list_colors       - Show saved colors\n");
     nrf_cli_fprintf(p_cli, NRF_CLI_NORMAL, "  help              - Print information about supported commands\n");
 }
 
 // Регистрация команд
 NRF_CLI_CMD_REGISTER(RGB, NULL, NULL, cmd_rgb);
 NRF_CLI_CMD_REGISTER(HSV, NULL, NULL, cmd_hsv);
+NRF_CLI_CMD_REGISTER(add_rgb_color, NULL, NULL, cmd_add_rgb_color);
+NRF_CLI_CMD_REGISTER(add_hsv_color, NULL, NULL, cmd_add_hsv_color);
+NRF_CLI_CMD_REGISTER(add_current_color, NULL, NULL, cmd_add_current_color);
+NRF_CLI_CMD_REGISTER(del_color, NULL, NULL, cmd_del_color);
+NRF_CLI_CMD_REGISTER(apply_color, NULL, NULL, cmd_apply_color);
+NRF_CLI_CMD_REGISTER(list_colors, NULL, NULL, cmd_list_colors);
 NRF_CLI_CMD_REGISTER(help, NULL, NULL, cmd_help);
 
 
